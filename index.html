@@ -10,6 +10,8 @@
         <link rel="stylesheet" href="resources/fontawesome-all.min.css">
         <link rel="stylesheet" href="./resources/ol-layerswitcher.css">
         <link rel="stylesheet" href="./resources/qgis2web.css">
+        <!-- Marzipano CSS -->
+        <script src="https://cdn.jsdelivr.net/npm/marzipano@0.10.1/dist/marzipano.js"></script>
         <style>
         html, body {
             background-color: #ffffff;
@@ -31,16 +33,18 @@
         .ol-control {
             background-color: rgba(255,255,255,.4) !important;
             padding: 2px !important;
-        } 
-        </style>
-
-        <style>
+        }
         html, body, #map {
             width: 100%;
             height: 100%;
             padding: 0;
             margin: 0;
         }
+        /* Marzipano popup styles */
+        #imagePopup { position:fixed; bottom:20px; right:20px; width:50vw; height:50vh; display:none; flex-direction:column; background:white; border:2px solid #888; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.3); margin:0; padding:0; overflow:hidden; z-index:9999; }
+        #pano { flex-grow:1; width:100%; height:100%; margin:0; padding:0; display:block; overflow:hidden; }
+        .close-btn { position:absolute; top:5px; right:10px; cursor:pointer; font-weight:bold; font-size:18px; color:#888;}
+        #popupLabel { font-size:14px; padding-top:5px;}
         </style>
         <title></title>
     </head>
@@ -51,6 +55,12 @@
                 <div id="popup-content"></div>
             </div>
         </div>
+        <!-- Marzipano popup -->
+        <div id="imagePopup">
+            <span class="close-btn" onclick="closeMarzipanoPopup();">✖</span>
+            <div id="pano"></div>
+            <div id="popupLabel"><strong>Label</strong></div>
+        </div>
         <script src="resources/qgis2web_expressions.js"></script>
         <script src="./resources/functions.js"></script>
         <script src="./resources/ol.js"></script>
@@ -60,5 +70,72 @@
         <script src="./layers/layers.js" type="text/javascript"></script> 
         <script src="./resources/Autolinker.min.js"></script>
         <script src="./resources/qgis2web.js"></script>
+        <!-- Marzipano viewer logic -->
+        <script>
+        var panoViewer = null;
+        function openMarzipanoPopup(imageUrl, labelText) {
+          document.getElementById('imagePopup').style.display = 'flex';
+          document.getElementById('popupLabel').innerHTML = '<strong>' + labelText + '</strong>';
+          var panoElement = document.getElementById('pano');
+          panoElement.innerHTML = '';
+          if (window.panoViewer && typeof window.panoViewer.destroy === "function") {
+            try { window.panoViewer.destroy(); } catch(e) {}
+          }
+          window.panoViewer = new Marzipano.Viewer(panoElement, { stageType: 'webgl' });
+          var source = Marzipano.ImageUrlSource.fromString(imageUrl);
+          var geometry = new Marzipano.EquirectGeometry([{ width: 1536 }]);
+          var limiter = Marzipano.RectilinearView.limit.traditional(1024, 100 * Math.PI / 180);
+          var view = new Marzipano.RectilinearView(null, limiter);
+          var scene = panoViewer.createScene({ source, geometry, view });
+          setTimeout(() => { 
+            scene.switchTo();
+            panoElement.style.display = 'block';
+            panoElement.style.width = '100%';
+            panoElement.style.height = '100%';
+            if (panoElement.querySelector('canvas')) {
+              panoElement.querySelector('canvas').style.width = '100%';
+              panoElement.querySelector('canvas').style.height = '100%';
+            }
+          }, 100);
+        }
+        function closeMarzipanoPopup() {
+          document.getElementById('imagePopup').style.display = 'none';
+          if (window.panoViewer && typeof window.panoViewer.destroy === "function") {
+            try { window.panoViewer.destroy(); } catch(e) {}
+            window.panoViewer = null;
+          }
+        }
+        </script>
+        <script>
+        // Integrate with OpenLayers feature click
+        // Wait until the map and layers are loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Find the camera points layer in your map object (default name below, may need adjusting)
+            if (typeof camera_points_final2_3 !== "undefined" && camera_points_final2_3 instanceof ol.layer.Vector) {
+                var selectInteraction = new ol.interaction.Select({
+                    layers: [camera_points_final2_3],
+                    condition: ol.events.condition.click
+                });
+                map.addInteraction(selectInteraction);
+                selectInteraction.on('select', function(e) {
+                    var feature = e.selected[0];
+                    if (feature && feature.get('Label')) {
+                        var imageName = feature.get('Label');
+                        openMarzipanoPopup('images/' + imageName, imageName);
+                    }
+                });
+            } else {
+                // Fallback for generic OpenLayers QGIS2Web
+                map.on('singleclick', function(evt) {
+                    map.forEachFeatureAtPixel(evt.pixel, function(feature, layer) {
+                        if (feature && feature.get('Label')) {
+                            var imageName = feature.get('Label');
+                            openMarzipanoPopup('images/' + imageName, imageName);
+                        }
+                    });
+                });
+            }
+        });
+        </script>
     </body>
 </html>
