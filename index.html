@@ -109,18 +109,28 @@
           }
         }
         </script>
-        <!-- Universal click handler for ALL features -->
+        <!-- Universal click handler for ALL features (handles clustering) -->
         <script>
         document.addEventListener('DOMContentLoaded', function() {
             map.on('singleclick', function(evt) {
                 map.forEachFeatureAtPixel(evt.pixel, function(feature, layer) {
-                    if (feature) {
-                        console.log('Universal click:', feature.getProperties());
-                    }
-                    if (feature && feature.get("Label")) {
-                        var imageName = feature.get("Label");
-                        console.log('Universal Marzipano:', imageName);
-                        openMarzipanoPopup('images/' + imageName, imageName);
+                    if (!feature) return;
+                    console.log('Universal click:', feature.getProperties());
+                    // If this is a cluster feature, get the first child feature
+                    var childFeatures = feature.get('features');
+                    if (childFeatures && childFeatures.length) {
+                        var subFeature = childFeatures[0];
+                        var labelVal = subFeature.get("Label");
+                        console.log('Clustered Marzipano:', labelVal);
+                        if (labelVal) {
+                            openMarzipanoPopup('images/' + labelVal, labelVal);
+                        }
+                    } else {
+                        var labelVal = feature.get("Label");
+                        if (labelVal) {
+                            console.log('Universal Marzipano:', labelVal);
+                            openMarzipanoPopup('images/' + labelVal, labelVal);
+                        }
                     }
                 }, { hitTolerance: 10 }); // Increase tolerance for easier clicking!
             });
