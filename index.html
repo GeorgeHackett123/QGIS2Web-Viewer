@@ -115,24 +115,21 @@
             map.on('singleclick', function(evt) {
                 map.forEachFeatureAtPixel(evt.pixel, function(feature, layer) {
                     if (!feature) return;
-                    console.log('Universal click:', feature.getProperties());
-                    // If this is a cluster feature, get the first child feature
+                    // Cluster support
                     var childFeatures = feature.get('features');
                     if (childFeatures && childFeatures.length) {
                         var subFeature = childFeatures[0];
                         var labelVal = subFeature.get("Label");
-                        console.log('Clustered Marzipano:', labelVal);
                         if (labelVal) {
                             openMarzipanoPopup('images/' + labelVal, labelVal);
                         }
                     } else {
                         var labelVal = feature.get("Label");
                         if (labelVal) {
-                            console.log('Universal Marzipano:', labelVal);
                             openMarzipanoPopup('images/' + labelVal, labelVal);
                         }
                     }
-                }, { hitTolerance: 10 }); // Increase tolerance for easier clicking!
+                }, { hitTolerance: 25 }); // Large hit box!
             });
         });
         </script>
