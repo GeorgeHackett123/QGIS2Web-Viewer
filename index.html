@@ -109,30 +109,6 @@
           }
         }
         </script>
-        <!-- Universal click handler for ALL features (handles clustering) -->
-        <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            map.on('singleclick', function(evt) {
-                map.forEachFeatureAtPixel(evt.pixel, function(feature, layer) {
-                    if (!feature) return;
-                    // Cluster support
-                    var childFeatures = feature.get('features');
-                    if (childFeatures && childFeatures.length) {
-                        var subFeature = childFeatures[0];
-                        var labelVal = subFeature.get("Label");
-                        if (labelVal) {
-                            openMarzipanoPopup('images/' + labelVal, labelVal);
-                        }
-                    } else {
-                        var labelVal = feature.get("Label");
-                        if (labelVal) {
-                            openMarzipanoPopup('images/' + labelVal, labelVal);
-                        }
-                    }
-                }, { hitTolerance: 25 });
-            });
-        });
-        </script>
         <!-- DOUBLE CIRCLE STYLE for pixel-perfect hit detection -->
         <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -163,6 +139,25 @@
                     console.warn('lyr_camera_points_final2_3 layer not found!');
                 }
             }, 1500);
+        });
+        </script>
+        <!-- Marzipano AND popup together! -->
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            map.on('singleclick', function(evt) {
+                map.forEachFeatureAtPixel(evt.pixel, function(feature, layer) {
+                    if (!feature) return;
+                    var childFeatures = feature.get('features');
+                    if (childFeatures && childFeatures.length) {
+                        var subFeature = childFeatures[0];
+                        var labelVal = subFeature.get("Label");
+                        if (labelVal) openMarzipanoPopup('images/' + labelVal, labelVal);
+                    } else {
+                        var labelVal = feature.get("Label");
+                        if (labelVal) openMarzipanoPopup('images/' + labelVal, labelVal);
+                    }
+                }, { hitTolerance: 25 });
+            });
         });
         </script>
     </body>
