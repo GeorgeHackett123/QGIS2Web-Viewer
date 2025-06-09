@@ -133,33 +133,34 @@
             });
         });
         </script>
-        <!-- Force camera points to use big yellow circles for max clickability -->
+        <!-- DOUBLE CIRCLE STYLE for pixel-perfect hit detection -->
         <script>
         document.addEventListener('DOMContentLoaded', function() {
             setTimeout(function() {
-                var candidateNames = [
-                    'camera_points_final2_3', 
-                    'camera_points_final2_3_0', 
-                    'camera_points_final2_3_1'
-                ];
-                var found = false;
-                for (var i = 0; i < candidateNames.length; i++) {
-                    var lyr = window[candidateNames[i]];
-                    if (lyr && lyr instanceof ol.layer.Vector) {
-                        lyr.setStyle(new ol.style.Style({
-                            image: new ol.style.Circle({
-                                radius: 16,
-                                stroke: new ol.style.Stroke({color: 'black', width: 4}),
-                                fill: new ol.style.Fill({color: 'yellow'})
+                if(window.lyr_camera_points_final2_3){
+                    window.lyr_camera_points_final2_3.setStyle(function(feature, resolution) {
+                        return [
+                            // Invisible big circle for hit detection
+                            new ol.style.Style({
+                                image: new ol.style.Circle({
+                                    radius: 22,
+                                    fill: new ol.style.Fill({color: 'rgba(255,255,255,0.01)'}),
+                                    stroke: null
+                                })
+                            }),
+                            // Visible yellow circle
+                            new ol.style.Style({
+                                image: new ol.style.Circle({
+                                    radius: 16,
+                                    stroke: new ol.style.Stroke({color: 'black', width: 4}),
+                                    fill: new ol.style.Fill({color: 'yellow'})
+                                })
                             })
-                        }));
-                        found = true;
-                        console.log('Yellow circle style applied to layer:', candidateNames[i]);
-                        break;
-                    }
-                }
-                if (!found) {
-                    console.warn('Could not find camera points layer to apply style.');
+                        ];
+                    });
+                    console.log('Double circle style (pixel-perfect click) applied!');
+                } else {
+                    console.warn('lyr_camera_points_final2_3 layer not found!');
                 }
             }, 1500);
         });
