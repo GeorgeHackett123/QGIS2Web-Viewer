@@ -78,7 +78,7 @@ function closeMarzipanoPopup() {
   }
 }
 </script>
-<!-- Marzipano handler (non-intrusive, works with QGIS2Web popup) -->
+<!-- Marzipano + Viewcone handler (one cone per selection, correct rotation) -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // --- Add single view cone layer ---
@@ -128,12 +128,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
             if (labelVal && yaw !== null && coords && !found) {
-                // Draw cone for this feature only
+                // --- CRUCIAL YAW FIX ---
+                let olBearing = 90 - yaw; // Cesium (north=0) to OL (east=0)
                 const halfFOV = coneFOV / 2;
                 const steps = 16;
                 const arcPoints = [];
                 for (let a = -halfFOV; a <= halfFOV; a += coneFOV / steps) {
-                    let bearing = yaw + a;
+                    let bearing = olBearing + a;
                     arcPoints.push(destinationPoint(coords[0], coords[1], coneLength, bearing));
                 }
                 // Polygon: [tip, ...arc points, tip]
