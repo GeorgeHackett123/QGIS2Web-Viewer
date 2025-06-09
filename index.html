@@ -78,23 +78,21 @@ function closeMarzipanoPopup() {
   }
 }
 </script>
-<!-- Marzipano + Viewcone handler (one cone per selection, correct rotation) -->
+<!-- Marzipano + Viewcone handler (with robust yaw/field debug logging) -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // --- Add single view cone layer ---
-    const coneLength = 0.0005; // ~50m, adjust to fit your map scale
+    const coneLength = 0.0005; // ~50m, adjust for your map
     const coneFOV = 45;        // Field of view (degrees)
     const viewConeLayer = new ol.layer.Vector({
         source: new ol.source.Vector(),
         style: new ol.style.Style({
-            fill: new ol.style.Fill({ color: 'rgba(50, 205, 50, 0.30)' }), // semi-transparent green
+            fill: new ol.style.Fill({ color: 'rgba(50, 205, 50, 0.30)' }),
             stroke: new ol.style.Stroke({ color: '#32CD32', width: 2 })
         }),
         zIndex: 1000
     });
     map.addLayer(viewConeLayer);
 
-    // Helper for destination point (bearing in degrees)
     function destinationPoint(lon, lat, distance, bearing) {
         const R = 6378137;
         const bearingRad = bearing * Math.PI / 180;
@@ -107,29 +105,35 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     map.on('singleclick', function(evt) {
-        // Remove previous cone
         viewConeLayer.getSource().clear();
         let found = false;
         map.forEachFeatureAtPixel(evt.pixel, function(feature) {
             let labelVal = null, yaw = null, coords = null;
-            // For cluster or single feature
             if (feature && feature.get) {
                 if (feature.get('features')) {
                     const features = feature.get('features');
                     if (features.length) {
                         labelVal = features[0].get('Label');
+                        // Try Yaw, then fallback to Yaw_est or yaw
                         yaw = features[0].get('Yaw');
+                        if (yaw === undefined) yaw = features[0].get('Yaw_est');
+                        if (yaw === undefined) yaw = features[0].get('yaw');
                         coords = features[0].getGeometry().getCoordinates();
                     }
                 } else {
                     labelVal = feature.get('Label');
                     yaw = feature.get('Yaw');
+                    if (yaw === undefined) yaw = feature.get('Yaw_est');
+                    if (yaw === undefined) yaw = feature.get('yaw');
                     coords = feature.getGeometry().getCoordinates();
                 }
             }
-            if (labelVal && yaw !== null && coords && !found) {
-                // --- CRUCIAL YAW FIX ---
-                let olBearing = 90 - yaw; // Cesium (north=0) to OL (east=0)
+            // Defensive: Make sure yaw is numeric and defined
+            yaw = yaw !== undefined && yaw !== null ? Number(yaw) : null;
+            // Debug info:
+            console.log("Label:", labelVal, "Yaw:", yaw, "Coords:", coords, "olBearing:", (yaw !== null ? 90 - yaw : "null"));
+            if (labelVal && yaw !== null && !isNaN(yaw) && coords && !found) {
+                let olBearing = 90 - yaw;
                 const halfFOV = coneFOV / 2;
                 const steps = 16;
                 const arcPoints = [];
@@ -137,12 +141,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     let bearing = olBearing + a;
                     arcPoints.push(destinationPoint(coords[0], coords[1], coneLength, bearing));
                 }
-                // Polygon: [tip, ...arc points, tip]
                 const polyCoords = [coords].concat(arcPoints, [coords]);
                 const coneFeature = new ol.Feature({ geometry: new ol.geom.Polygon([polyCoords]) });
                 viewConeLayer.getSource().addFeature(coneFeature);
 
-                // Show Marzipano too
                 openMarzipanoPopup('images/' + labelVal, labelVal);
                 found = true;
             }
