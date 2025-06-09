@@ -108,57 +108,30 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 1500);
 });
 </script>
-<!-- PATCH QGIS2WEB POPUP TO CALL MARZIPANO -->
+<!-- BULLETPROOF MARZIPANO HANDLER: always fires, never disables the popup -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Find the overlay and popup-content elements
-    var overlay = null;
-    var content = document.getElementById('popup-content');
-    setTimeout(function() {
-        // QGIS2Web usually attaches the overlay to window.overlay or similar
-        overlay = window.overlay || null;
-        // Remove any previously set click handlers
-        map.un('singleclick');
-        // Our own popup logic, calling Marzipano as well as showing popup
-        map.on('singleclick', function(evt) {
-            var feature, coord;
-            map.forEachFeatureAtPixel(evt.pixel, function(f, layer) {
-                if (!feature) {
-                    feature = f;
-                    if (f.getGeometry) {
-                        coord = f.getGeometry().getCoordinates();
-                    }
-                }
-            }, { hitTolerance: 25 });
+    map.on('singleclick', function(evt) {
+        var marzipanoTriggered = false;
+        map.forEachFeatureAtPixel(evt.pixel, function(feature, layer) {
+            // Handles clusters too
+            var labelVal = null;
             if (feature) {
-                // Build popup content as QGIS2Web would
-                var html = '';
-                var props = feature.getProperties();
-                for (var key in props) {
-                    if (key !== 'geometry' && props.hasOwnProperty(key)) {
-                        html += '<b>' + key + '</b>: ' + props[key] + '<br>';
+                if (feature.get('features')) {
+                    var features = feature.get('features');
+                    if (features.length && features[0].get('Label')) {
+                        labelVal = features[0].get('Label');
                     }
+                } else if (feature.get('Label')) {
+                    labelVal = feature.get('Label');
                 }
-                content.innerHTML = html;
-                if (!overlay) overlay = window.overlay;
-                if (overlay) overlay.setPosition(coord);
-                // ---- MARZIPANO PATCH ----
-                var labelVal = feature.get('Label');
-                if (!labelVal && feature.get('features')) {
-                    var childFeatures = feature.get('features');
-                    if (childFeatures && childFeatures.length) {
-                        labelVal = childFeatures[0].get('Label');
-                    }
-                }
-                if (labelVal) {
+                if (labelVal && !marzipanoTriggered) {
                     openMarzipanoPopup('images/' + labelVal, labelVal);
+                    marzipanoTriggered = true;
                 }
-                // -------------------------
-            } else {
-                if (overlay) overlay.setPosition(undefined);
             }
-        });
-    }, 2000);
+        }, { hitTolerance: 25 });
+    });
 });
 </script>
 </body>
