@@ -78,24 +78,26 @@ function closeMarzipanoPopup() {
   }
 }
 </script>
-<!-- NON-INTRUSIVE MARZIPANO HANDLER: fires for camera points, does NOT override popup logic -->
+<!-- Only this script triggers Marzipano, nothing else changes -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     map.on('singleclick', function(evt) {
-        map.forEachFeatureAtPixel(evt.pixel, function(feature, layer) {
-            var labelVal = null;
-            if (feature) {
+        let found = false;
+        map.forEachFeatureAtPixel(evt.pixel, function(feature) {
+            let labelVal = null;
+            if (feature && feature.get) {
                 if (feature.get('features')) {
-                    var features = feature.get('features');
+                    const features = feature.get('features');
                     if (features.length && features[0].get('Label')) {
                         labelVal = features[0].get('Label');
                     }
                 } else if (feature.get('Label')) {
                     labelVal = feature.get('Label');
                 }
-                if (labelVal) {
-                    openMarzipanoPopup('images/' + labelVal, labelVal);
-                }
+            }
+            if (labelVal && !found) {
+                openMarzipanoPopup('images/' + labelVal, labelVal);
+                found = true; // only open for one feature per click
             }
         }, { hitTolerance: 5 });
     });
