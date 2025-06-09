@@ -9,7 +9,7 @@
 <link rel="stylesheet" href="./resources/ol-layerswitcher.css">
 <link rel="stylesheet" href="./resources/qgis2web.css">
 <script src="https://cdn.jsdelivr.net/npm/marzipano@0.10.1/dist/marzipano.js"></script>
-<title>QGIS2Web + Marzipano</title>
+<title>QGIS2Web + Marzipano + Viewcones</title>
 <style>
 html, body, #map { width: 100%; height: 100%; padding: 0; margin: 0; }
 #imagePopup { position:fixed; bottom:20px; right:20px; width:50vw; height:50vh; display:none; flex-direction:column; background:white; border:2px solid #888; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.3); z-index:9999; }
@@ -78,7 +78,7 @@ function closeMarzipanoPopup() {
   }
 }
 </script>
-<!-- Only this script triggers Marzipano, nothing else changes -->
+<!-- Marzipano handler (non-intrusive, works with QGIS2Web popup) -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     map.on('singleclick', function(evt) {
@@ -97,10 +97,68 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             if (labelVal && !found) {
                 openMarzipanoPopup('images/' + labelVal, labelVal);
-                found = true; // only open for one feature per click
+                found = true;
             }
         }, { hitTolerance: 5 });
     });
+});
+</script>
+<!-- Directional cones for camera points -->
+<script>
+// Parameters
+const coneLength = 0.0004;   // Degrees, ~40m; adjust to fit your map scale
+const coneFOV = 45;          // Field of view (degrees)
+
+function degreesToRadians(deg) {
+    return deg * Math.PI / 180;
+}
+
+function destinationPoint(lon, lat, distance, bearing) {
+    // distance in degrees (very approximate; fine for small cones)
+    const R = 6378137; // m
+    const d = distance * (Math.PI / 180) * R;
+    const θ = degreesToRadians(bearing);
+    const φ1 = degreesToRadians(lat);
+    const λ1 = degreesToRadians(lon);
+    const φ2 = Math.asin( Math.sin(φ1)*Math.cos(d/R) + Math.cos(φ1)*Math.sin(d/R)*Math.cos(θ) );
+    const λ2 = λ1 + Math.atan2(Math.sin(θ)*Math.sin(d/R)*Math.cos(φ1), Math.cos(d/R)-Math.sin(φ1)*Math.sin(φ2));
+    return [λ2 * 180/Math.PI, φ2 * 180/Math.PI];
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+        var coneFeatures = [];
+        if(window.lyr_camera_points_final2_3){
+            var features = window.lyr_camera_points_final2_3.getSource().getFeatures();
+            features.forEach(function(f) {
+                var coords = f.getGeometry().getCoordinates();
+                var yaw = f.get('Yaw');
+                if (yaw === undefined || coords.length !== 2) return;
+                var halfFOV = coneFOV / 2;
+                var tip = coords;
+                var left = destinationPoint(coords[0], coords[1], coneLength, yaw - halfFOV);
+                var right = destinationPoint(coords[0], coords[1], coneLength, yaw + halfFOV);
+                var poly = new ol.geom.Polygon([[
+                    tip,
+                    left,
+                    right,
+                    tip
+                ]]);
+                var coneFeature = new ol.Feature({ geometry: poly });
+                coneFeatures.push(coneFeature);
+            });
+            var coneLayer = new ol.layer.Vector({
+                source: new ol.source.Vector({
+                    features: coneFeatures
+                }),
+                style: new ol.style.Style({
+                    fill: new ol.style.Fill({ color: 'rgba(255, 165, 0, 0.3)' }),
+                    stroke: new ol.style.Stroke({ color: 'orange', width: 2 })
+                })
+            });
+            map.addLayer(coneLayer);
+        }
+    }, 2000);
 });
 </script>
 </body>
