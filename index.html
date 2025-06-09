@@ -78,43 +78,11 @@ function closeMarzipanoPopup() {
   }
 }
 </script>
-<!-- DOUBLE CIRCLE STYLE for pixel-perfect hit detection -->
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    setTimeout(function() {
-        if(window.lyr_camera_points_final2_3){
-            window.lyr_camera_points_final2_3.setStyle(function(feature, resolution) {
-                return [
-                    new ol.style.Style({
-                        image: new ol.style.Circle({
-                            radius: 22,
-                            fill: new ol.style.Fill({color: 'rgba(255,255,255,0.01)'}),
-                            stroke: null
-                        })
-                    }),
-                    new ol.style.Style({
-                        image: new ol.style.Circle({
-                            radius: 16,
-                            stroke: new ol.style.Stroke({color: 'black', width: 4}),
-                            fill: new ol.style.Fill({color: 'yellow'})
-                        })
-                    })
-                ];
-            });
-            console.log('Double circle style (pixel-perfect click) applied!');
-        } else {
-            console.warn('lyr_camera_points_final2_3 layer not found!');
-        }
-    }, 1500);
-});
-</script>
-<!-- BULLETPROOF MARZIPANO HANDLER: always fires, never disables the popup -->
+<!-- NON-INTRUSIVE MARZIPANO HANDLER: fires for camera points, does NOT override popup logic -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     map.on('singleclick', function(evt) {
-        var marzipanoTriggered = false;
         map.forEachFeatureAtPixel(evt.pixel, function(feature, layer) {
-            // Handles clusters too
             var labelVal = null;
             if (feature) {
                 if (feature.get('features')) {
@@ -125,12 +93,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else if (feature.get('Label')) {
                     labelVal = feature.get('Label');
                 }
-                if (labelVal && !marzipanoTriggered) {
+                if (labelVal) {
                     openMarzipanoPopup('images/' + labelVal, labelVal);
-                    marzipanoTriggered = true;
                 }
             }
-        }, { hitTolerance: 25 });
+        }, { hitTolerance: 5 });
     });
 });
 </script>
